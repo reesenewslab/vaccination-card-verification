@@ -3,7 +3,7 @@ import numpy as np
 import imutils
 import cv2
 
-def align_images(image, template, maxFeatures=500, keepPercent=0.2,
+def align_images(image, template, fileTag, maxFeatures=500, keepPercent=0.2,
 	debug=False):
 	# convert both the input image and template to grayscale
 	imageGray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -28,14 +28,6 @@ def align_images(image, template, maxFeatures=500, keepPercent=0.2,
 	keep = int(len(matches) * keepPercent)
 	matches = matches[:keep]
 
-	# check to see if we should visualize the matched keypoints
-	if debug:
-		matchedVis = cv2.drawMatches(image, kpsA, template, kpsB,
-			matches, None)
-		matchedVis = imutils.resize(matchedVis, width=1000)
-		cv2.imshow("Matched Keypoints", matchedVis)
-		cv2.waitKey(0)
-
 	# allocate memory for the keypoints (x,y-coordinates) from the
 	# top matches -- we'll use these coordinates to compute our
 	# homography matrix
@@ -51,7 +43,30 @@ def align_images(image, template, maxFeatures=500, keepPercent=0.2,
 
 	# compute the homography matrix between the two sets of matched
 	# points
-	(H, mask) = cv2.findHomography(ptsA, ptsB, method=cv2.RANSAC)
+	(H, mask) = cv2.findHomography(ptsA, ptsB, method=cv2.RANSAC, ransacReprojThreshold=5)
+	mask_inliers = np.array(mask)
+	mask_outliers = np.logical_not(mask_inliers).astype(int)
+
+	print(f'matches: {len(matches)}, output mask: {mask.shape}, mask_inliers.count_nonzero(): {np.count_nonzero(mask_inliers)}, mask_outliers.count_nonzero(): {np.count_nonzero(mask_outliers)}')
+
+	# check to see if we should visualize the matched keypoints
+	if debug:
+		# draw matches (RANSAC inliers)
+		matchedVis = cv2.drawMatches(image, kpsA, template, kpsB,
+			matches, None, matchColor=(0, 255, 0), matchesMask=mask_inliers)
+
+		# draw matches (RANSAC outliers)
+		matchedVis = cv2.drawMatches(image, kpsA, template, kpsB,
+			matches, matchedVis, matchColor=(0, 0, 255), matchesMask=mask_outliers, flags=cv2.DrawMatchesFlags_DRAW_OVER_OUTIMG)
+
+		# draw unmatched
+		# matchedVis = cv2.drawMatches(image, kpsA, template, kpsB,
+		# 	matches, matchedVis, matchColor=(0, 0, 255), matchesMask=mask_outliers, flags=cv2.DrawMatchesFlags_DRAW_OVER_OUTIMG)
+
+		matchedVis = imutils.resize(matchedVis, width=1000)
+		# cv2.imshow("Matched Keypoints", matchedVis)
+		# cv2.waitKey(0)
+		cv2.imwrite(f"output/{fileTag}_matched_keypoints.jpg", matchedVis)
 
 	# use the homography matrix to align the images
 	(h, w) = template.shape[:2]
