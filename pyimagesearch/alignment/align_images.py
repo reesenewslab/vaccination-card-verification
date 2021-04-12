@@ -5,6 +5,24 @@ import cv2
 
 def align_images(image, template, fileTag, maxFeatures=500, keepPercent=0.2,
 	debug=False):
+	'''
+	Aligns image to template via the steps:
+		1. ORB keypoint detection
+		2. Brute force hamming distance keypoint matching
+		3. RANSAC homography estimation
+
+	Input:
+		image - the image to be aligned
+		template - the template the image should be aligned to
+		fileTag - a prefix to be used on the debug output files
+		[Optional] maxFeatures - the maximum number of keypoints to detect
+		[Optional] keepPercent - the percentage of keypoint matches to actually use during the homography estimation
+
+	Output: (aligned, RANSAC_inliers)
+		aligned - the aliged image
+		RANSAC_inliers - the number of keypoint matches which are determined as inliers for the RANSAC homography estimation
+	'''
+
 	# convert both the input image and template to grayscale
 	imageGray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 	templateGray = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
@@ -73,4 +91,4 @@ def align_images(image, template, fileTag, maxFeatures=500, keepPercent=0.2,
 	aligned = cv2.warpPerspective(image, H, (w, h))
 
 	# return the aligned image
-	return aligned
+	return aligned, np.count_nonzero(mask_inliers)
