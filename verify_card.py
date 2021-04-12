@@ -2,6 +2,7 @@
 # python verify_card.py --template templates/CDC_card_template.png --image scans/valid/covid_01.JPEG
 
 import argparse
+import re
 from collections import namedtuple
 
 import cv2
@@ -64,12 +65,18 @@ def read_title(aligned, fileTag='', debug=False) -> str:
 
 
 def verify_card(RANSAC_inliers, title) -> bool:
+    # require a minimum number of inliers during the homography estimation
     if RANSAC_inliers < 11:
         print("failed RANSAC inlier verification!")
         return False
-    if title.strip() != "COVID-19 Vaccination Record Card":
+
+    # verify title with regex (allowing for variable amounts of whitespace)
+    expectedTitleRegex = re.compile(r'(COVID\s*-\s*1\s*9\s*Vaccination\s*Record\s*Card)', re.DOTALL)
+    match = expectedTitleRegex.search(title)
+    if match is None:
         print(f"failed title verification! title: {title}")
         return False
+    # print(match.group(1))
 
     return True
 
