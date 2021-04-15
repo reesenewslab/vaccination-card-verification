@@ -1,5 +1,5 @@
 # USAGE
-# python verify_card.py --template templates/CDC_card_template.png --image scans/valid/covid_01.JPEG
+# python verify_card.py --template templates/CDC_card_template_01.png --image scans/valid/covid_01.JPEG
 
 import argparse
 import re
