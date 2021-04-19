@@ -64,7 +64,37 @@ def read_title(aligned, fileTag='', debug=False) -> str:
     return text
 
 
-def verify_card(RANSAC_inliers, title) -> bool:
+def logo_template_match(aligned, template_img, debug=True):
+    """
+    Returns the top-left 2D coordinate of the template match.
+    """
+
+    # first convert to grayscale
+    aligned_gray = cv2.cvtColor(aligned, cv2.COLOR_BGR2GRAY)
+    logo_template_gray = cv2.cvtColor(logo_template, cv2.COLOR_BGR2GRAY)
+    logo_template_h = logo_template_gray.shape[0]
+    logo_template_w = logo_template_gray.shape[1]
+
+    # perform Zero-normalized cross-correlation template match
+    result = cv2.matchTemplate(aligned_gray, logo_template_gray, cv2.TM_CCOEFF_NORMED)
+    _, _, _, max_loc = cv2.minMaxLoc(result)  # highest value is the best match
+
+    if debug:
+        # get the ROI coordinates for the match
+        roi_x0 = min(aligned_gray.shape[1], max(0, max_loc[0]))
+        roi_y0 = min(aligned_gray.shape[0], max(0, max_loc[1]))
+        roi_x1 = min(aligned_gray.shape[1], max(0, max_loc[0] + logo_template_w))
+        roi_y1 = min(aligned_gray.shape[0], max(0, max_loc[1] + logo_template_h))
+
+        # visualize the match next to the template
+        aligned_roi = aligned_gray[roi_y0:roi_y1, roi_x0:roi_x1]
+        tm_stacked = np.hstack([aligned_roi, logo_template_gray])
+        cv2.imwrite(f"output/{args['tag']}_TM.jpg", tm_stacked)
+
+    return max_loc
+
+
+def verify_card(RANSAC_inliers, title, TM_loc) -> bool:
     # require a minimum number of inliers during the homography estimation
     if RANSAC_inliers < 11:
         print("failed RANSAC inlier verification!")
@@ -76,7 +106,11 @@ def verify_card(RANSAC_inliers, title) -> bool:
     if match is None:
         print(f"failed title verification! title: {title}")
         return False
-    # print(match.group(1))
+
+    # verify the CDC logo is near the top right corner
+    if TM_loc[0] < 1470 or TM_loc[1] > 10:
+        print("failed CDC logo check. should be in top right!")
+        return False
 
     return True
 
@@ -137,115 +171,10 @@ if __name__ == "__main__":
     title = read_title(aligned, fileTag=args["tag"], debug=True)
 
     # perform logo template match
-    aligned_gray = cv2.cvtColor(aligned, cv2.COLOR_BGR2GRAY)
-    logo_template_gray = cv2.cvtColor(logo_template, cv2.COLOR_BGR2GRAY)
-    print(f'aligned.shape: {aligned.shape}, logo_template.shape: {logo_template.shape}')
-    print(f'aligned_gray.shape: {aligned_gray.shape}, logo_template_gray.shape: {logo_template_gray.shape}')
-    aligned = aligned_gray
-    logo_template = logo_template_gray
-    print(logo_template.shape)
-    logo_template_h = logo_template.shape[0]
-    logo_template_w = logo_template.shape[1]
-
-    result = cv2.matchTemplate(aligned, logo_template, cv2.TM_SQDIFF)
-    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
-    print('===============TM_SQDIFF')
-    print(result)
-    print(f'result.shape: {result.shape}')
-    print(f'min_loc: {min_loc}, min_val: {min_val}')
-    cv2.imwrite(f"output/{args['tag']}_TM_SQDIFF.jpg", 255*result)
-    roi_x0 = min(aligned.shape[1], max(0, min_loc[0]))
-    roi_y0 = min(aligned.shape[0], max(0, min_loc[1]))
-    roi_x1 = min(aligned.shape[1], max(0, min_loc[0] + logo_template_w))
-    roi_y1 = min(aligned.shape[0], max(0, min_loc[1] + logo_template_h))
-    print(f'roi_x0: {roi_x0}, roi_y0: {roi_y0}, roi_x1: {roi_x1}, roi_y1: {roi_y1}')
-    aligned_roi = aligned[roi_y0:roi_y1, roi_x0:roi_x1]
-    tm_stacked = np.hstack([aligned_roi, logo_template])
-    cv2.imwrite(f"output/{args['tag']}_TM_SQDIFF_match.jpg", tm_stacked)
-
-    result = cv2.matchTemplate(aligned, logo_template, cv2.TM_SQDIFF_NORMED)
-    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
-    print('===============TM_SQDIFF_NORMED')
-    print(result)
-    print(f'result.shape: {result.shape}')
-    print(f'min_loc: {min_loc}, min_val: {min_val}')
-    cv2.imwrite(f"output/{args['tag']}_TM_SQDIFF_NORMED.jpg", 255*result)
-    roi_x0 = min(aligned.shape[1], max(0, min_loc[0]))
-    roi_y0 = min(aligned.shape[0], max(0, min_loc[1]))
-    roi_x1 = min(aligned.shape[1], max(0, min_loc[0] + logo_template_w))
-    roi_y1 = min(aligned.shape[0], max(0, min_loc[1] + logo_template_h))
-    print(f'roi_x0: {roi_x0}, roi_y0: {roi_y0}, roi_x1: {roi_x1}, roi_y1: {roi_y1}')
-    aligned_roi = aligned[roi_y0:roi_y1, roi_x0:roi_x1]
-    tm_stacked = np.hstack([aligned_roi, logo_template])
-    cv2.imwrite(f"output/{args['tag']}_TM_SQDIFF_NORMED_match.jpg", tm_stacked)
-
-    result = cv2.matchTemplate(aligned, logo_template, cv2.TM_CCORR)
-    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
-    print('===============TM_CCORR')
-    print(result)
-    print(f'result.shape: {result.shape}')
-    print(f'max_loc: {max_loc}, max_val: {max_val}')
-    cv2.imwrite(f"output/{args['tag']}_TM_CCORR.jpg", 255*result)
-    roi_x0 = min(aligned.shape[1], max(0, max_loc[0]))
-    roi_y0 = min(aligned.shape[0], max(0, max_loc[1]))
-    roi_x1 = min(aligned.shape[1], max(0, max_loc[0] + logo_template_w))
-    roi_y1 = min(aligned.shape[0], max(0, max_loc[1] + logo_template_h))
-    print(f'roi_x0: {roi_x0}, roi_y0: {roi_y0}, roi_x1: {roi_x1}, roi_y1: {roi_y1}')
-    aligned_roi = aligned[roi_y0:roi_y1, roi_x0:roi_x1]
-    tm_stacked = np.hstack([aligned_roi, logo_template])
-    cv2.imwrite(f"output/{args['tag']}_TM_CCORR_match.jpg", tm_stacked)
-
-    result = cv2.matchTemplate(aligned, logo_template, cv2.TM_CCORR_NORMED)
-    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
-    print('===============TM_CCORR_NORMED')
-    print(result)
-    print(f'result.shape: {result.shape}')
-    # print(f'min_loc: {min_loc}, min_val: {min_val}')
-    print(f'max_loc: {max_loc}, max_val: {max_val}')
-    cv2.imwrite(f"output/{args['tag']}_TM_CCORR_NORMED.jpg", 255*result)
-    roi_x0 = min(aligned.shape[1], max(0, max_loc[0]))
-    roi_y0 = min(aligned.shape[0], max(0, max_loc[1]))
-    roi_x1 = min(aligned.shape[1], max(0, max_loc[0] + logo_template_w))
-    roi_y1 = min(aligned.shape[0], max(0, max_loc[1] + logo_template_h))
-    print(f'roi_x0: {roi_x0}, roi_y0: {roi_y0}, roi_x1: {roi_x1}, roi_y1: {roi_y1}')
-    aligned_roi = aligned[roi_y0:roi_y1, roi_x0:roi_x1]
-    tm_stacked = np.hstack([aligned_roi, logo_template])
-    cv2.imwrite(f"output/{args['tag']}_TM_CCORR_NORMED_match.jpg", tm_stacked)
-
-    result = cv2.matchTemplate(aligned, logo_template, cv2.TM_CCOEFF)
-    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
-    print('===============TM_CCOEFF')
-    print(result)
-    print(f'result.shape: {result.shape}')
-    print(f'max_loc: {max_loc}, max_val: {max_val}')
-    cv2.imwrite(f"output/{args['tag']}_TM_CCOEFF.jpg", 255*result)
-    roi_x0 = min(aligned.shape[1], max(0, max_loc[0]))
-    roi_y0 = min(aligned.shape[0], max(0, max_loc[1]))
-    roi_x1 = min(aligned.shape[1], max(0, max_loc[0] + logo_template_w))
-    roi_y1 = min(aligned.shape[0], max(0, max_loc[1] + logo_template_h))
-    print(f'roi_x0: {roi_x0}, roi_y0: {roi_y0}, roi_x1: {roi_x1}, roi_y1: {roi_y1}')
-    aligned_roi = aligned[roi_y0:roi_y1, roi_x0:roi_x1]
-    tm_stacked = np.hstack([aligned_roi, logo_template])
-    cv2.imwrite(f"output/{args['tag']}_TM_CCOEFF_match.jpg", tm_stacked)
-
-    result = cv2.matchTemplate(aligned, logo_template, cv2.TM_CCOEFF_NORMED)
-    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
-    print('===============TM_CCOEFF_NORMED')
-    print(result)
-    print(f'result.shape: {result.shape}')
-    print(f'max_loc: {max_loc}, max_val: {max_val}')
-    cv2.imwrite(f"output/{args['tag']}_TM_CCOEFF_NORMED.jpg", 255*result)
-    roi_x0 = min(aligned.shape[1], max(0, max_loc[0]))
-    roi_y0 = min(aligned.shape[0], max(0, max_loc[1]))
-    roi_x1 = min(aligned.shape[1], max(0, max_loc[0] + logo_template_w))
-    roi_y1 = min(aligned.shape[0], max(0, max_loc[1] + logo_template_h))
-    print(f'roi_x0: {roi_x0}, roi_y0: {roi_y0}, roi_x1: {roi_x1}, roi_y1: {roi_y1}')
-    aligned_roi = aligned[roi_y0:roi_y1, roi_x0:roi_x1]
-    tm_stacked = np.hstack([aligned_roi, logo_template])
-    cv2.imwrite(f"output/{args['tag']}_TM_CCOEFF_NORMED_match.jpg", tm_stacked)
+    max_loc = logo_template_match(aligned, logo_template, debug=True)
 
     # verify it is a valid vaccination card
-    verified = verify_card(RANSAC_inliers, title)
+    verified = verify_card(RANSAC_inliers, title, max_loc)
     if verified:
         print("Valid vaccination card detected!")
     else:
