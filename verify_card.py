@@ -123,6 +123,7 @@ if __name__ == "__main__":
     print("[INFO] loading images...")
     image = cv2.imread(args["image"])
     template = cv2.imread(args["template"])
+    logo_template = cv2.imread('templates/cdc_logo_template.png')
 
     # align the images
     print("[INFO] aligning images...")
@@ -134,6 +135,114 @@ if __name__ == "__main__":
     # perform OCR on the aligned image
     # perform_OCR()
     title = read_title(aligned, fileTag=args["tag"], debug=True)
+
+    # perform logo template match
+    aligned_gray = cv2.cvtColor(aligned, cv2.COLOR_BGR2GRAY)
+    logo_template_gray = cv2.cvtColor(logo_template, cv2.COLOR_BGR2GRAY)
+    print(f'aligned.shape: {aligned.shape}, logo_template.shape: {logo_template.shape}')
+    print(f'aligned_gray.shape: {aligned_gray.shape}, logo_template_gray.shape: {logo_template_gray.shape}')
+    aligned = aligned_gray
+    logo_template = logo_template_gray
+    print(logo_template.shape)
+    logo_template_h = logo_template.shape[0]
+    logo_template_w = logo_template.shape[1]
+
+    result = cv2.matchTemplate(aligned, logo_template, cv2.TM_SQDIFF)
+    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+    print('===============TM_SQDIFF')
+    print(result)
+    print(f'result.shape: {result.shape}')
+    print(f'min_loc: {min_loc}, min_val: {min_val}')
+    cv2.imwrite(f"output/{args['tag']}_TM_SQDIFF.jpg", 255*result)
+    roi_x0 = min(aligned.shape[1], max(0, min_loc[0]))
+    roi_y0 = min(aligned.shape[0], max(0, min_loc[1]))
+    roi_x1 = min(aligned.shape[1], max(0, min_loc[0] + logo_template_w))
+    roi_y1 = min(aligned.shape[0], max(0, min_loc[1] + logo_template_h))
+    print(f'roi_x0: {roi_x0}, roi_y0: {roi_y0}, roi_x1: {roi_x1}, roi_y1: {roi_y1}')
+    aligned_roi = aligned[roi_y0:roi_y1, roi_x0:roi_x1]
+    tm_stacked = np.hstack([aligned_roi, logo_template])
+    cv2.imwrite(f"output/{args['tag']}_TM_SQDIFF_match.jpg", tm_stacked)
+
+    result = cv2.matchTemplate(aligned, logo_template, cv2.TM_SQDIFF_NORMED)
+    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+    print('===============TM_SQDIFF_NORMED')
+    print(result)
+    print(f'result.shape: {result.shape}')
+    print(f'min_loc: {min_loc}, min_val: {min_val}')
+    cv2.imwrite(f"output/{args['tag']}_TM_SQDIFF_NORMED.jpg", 255*result)
+    roi_x0 = min(aligned.shape[1], max(0, min_loc[0]))
+    roi_y0 = min(aligned.shape[0], max(0, min_loc[1]))
+    roi_x1 = min(aligned.shape[1], max(0, min_loc[0] + logo_template_w))
+    roi_y1 = min(aligned.shape[0], max(0, min_loc[1] + logo_template_h))
+    print(f'roi_x0: {roi_x0}, roi_y0: {roi_y0}, roi_x1: {roi_x1}, roi_y1: {roi_y1}')
+    aligned_roi = aligned[roi_y0:roi_y1, roi_x0:roi_x1]
+    tm_stacked = np.hstack([aligned_roi, logo_template])
+    cv2.imwrite(f"output/{args['tag']}_TM_SQDIFF_NORMED_match.jpg", tm_stacked)
+
+    result = cv2.matchTemplate(aligned, logo_template, cv2.TM_CCORR)
+    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+    print('===============TM_CCORR')
+    print(result)
+    print(f'result.shape: {result.shape}')
+    print(f'max_loc: {max_loc}, max_val: {max_val}')
+    cv2.imwrite(f"output/{args['tag']}_TM_CCORR.jpg", 255*result)
+    roi_x0 = min(aligned.shape[1], max(0, max_loc[0]))
+    roi_y0 = min(aligned.shape[0], max(0, max_loc[1]))
+    roi_x1 = min(aligned.shape[1], max(0, max_loc[0] + logo_template_w))
+    roi_y1 = min(aligned.shape[0], max(0, max_loc[1] + logo_template_h))
+    print(f'roi_x0: {roi_x0}, roi_y0: {roi_y0}, roi_x1: {roi_x1}, roi_y1: {roi_y1}')
+    aligned_roi = aligned[roi_y0:roi_y1, roi_x0:roi_x1]
+    tm_stacked = np.hstack([aligned_roi, logo_template])
+    cv2.imwrite(f"output/{args['tag']}_TM_CCORR_match.jpg", tm_stacked)
+
+    result = cv2.matchTemplate(aligned, logo_template, cv2.TM_CCORR_NORMED)
+    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+    print('===============TM_CCORR_NORMED')
+    print(result)
+    print(f'result.shape: {result.shape}')
+    # print(f'min_loc: {min_loc}, min_val: {min_val}')
+    print(f'max_loc: {max_loc}, max_val: {max_val}')
+    cv2.imwrite(f"output/{args['tag']}_TM_CCORR_NORMED.jpg", 255*result)
+    roi_x0 = min(aligned.shape[1], max(0, max_loc[0]))
+    roi_y0 = min(aligned.shape[0], max(0, max_loc[1]))
+    roi_x1 = min(aligned.shape[1], max(0, max_loc[0] + logo_template_w))
+    roi_y1 = min(aligned.shape[0], max(0, max_loc[1] + logo_template_h))
+    print(f'roi_x0: {roi_x0}, roi_y0: {roi_y0}, roi_x1: {roi_x1}, roi_y1: {roi_y1}')
+    aligned_roi = aligned[roi_y0:roi_y1, roi_x0:roi_x1]
+    tm_stacked = np.hstack([aligned_roi, logo_template])
+    cv2.imwrite(f"output/{args['tag']}_TM_CCORR_NORMED_match.jpg", tm_stacked)
+
+    result = cv2.matchTemplate(aligned, logo_template, cv2.TM_CCOEFF)
+    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+    print('===============TM_CCOEFF')
+    print(result)
+    print(f'result.shape: {result.shape}')
+    print(f'max_loc: {max_loc}, max_val: {max_val}')
+    cv2.imwrite(f"output/{args['tag']}_TM_CCOEFF.jpg", 255*result)
+    roi_x0 = min(aligned.shape[1], max(0, max_loc[0]))
+    roi_y0 = min(aligned.shape[0], max(0, max_loc[1]))
+    roi_x1 = min(aligned.shape[1], max(0, max_loc[0] + logo_template_w))
+    roi_y1 = min(aligned.shape[0], max(0, max_loc[1] + logo_template_h))
+    print(f'roi_x0: {roi_x0}, roi_y0: {roi_y0}, roi_x1: {roi_x1}, roi_y1: {roi_y1}')
+    aligned_roi = aligned[roi_y0:roi_y1, roi_x0:roi_x1]
+    tm_stacked = np.hstack([aligned_roi, logo_template])
+    cv2.imwrite(f"output/{args['tag']}_TM_CCOEFF_match.jpg", tm_stacked)
+
+    result = cv2.matchTemplate(aligned, logo_template, cv2.TM_CCOEFF_NORMED)
+    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+    print('===============TM_CCOEFF_NORMED')
+    print(result)
+    print(f'result.shape: {result.shape}')
+    print(f'max_loc: {max_loc}, max_val: {max_val}')
+    cv2.imwrite(f"output/{args['tag']}_TM_CCOEFF_NORMED.jpg", 255*result)
+    roi_x0 = min(aligned.shape[1], max(0, max_loc[0]))
+    roi_y0 = min(aligned.shape[0], max(0, max_loc[1]))
+    roi_x1 = min(aligned.shape[1], max(0, max_loc[0] + logo_template_w))
+    roi_y1 = min(aligned.shape[0], max(0, max_loc[1] + logo_template_h))
+    print(f'roi_x0: {roi_x0}, roi_y0: {roi_y0}, roi_x1: {roi_x1}, roi_y1: {roi_y1}')
+    aligned_roi = aligned[roi_y0:roi_y1, roi_x0:roi_x1]
+    tm_stacked = np.hstack([aligned_roi, logo_template])
+    cv2.imwrite(f"output/{args['tag']}_TM_CCOEFF_NORMED_match.jpg", tm_stacked)
 
     # verify it is a valid vaccination card
     verified = verify_card(RANSAC_inliers, title)
