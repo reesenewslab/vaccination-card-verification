@@ -45,7 +45,7 @@ OCR_LOCATIONS = [
 # 		print(f'{loc.id}:')
 # 		print(text)
 
-def read_title(aligned, fileTag='', debug=False) -> str:
+def read_title(aligned, fileTag=None, debug=False) -> str:
     loc = OCR_LOCATIONS[0]
 
     # get title ROI
@@ -54,8 +54,7 @@ def read_title(aligned, fileTag='', debug=False) -> str:
 
     # show ROI
     if debug:
-        # cv2.imwrite("output/" +  loc.id + ".jpg", roi)
-        cv2.imwrite(f"output/{args['tag']}_field_{loc.id}.jpg", roi)
+        cv2.imwrite(f"output/{fileTag}_field_{loc.id}.jpg", roi)
 
     # OCR the ROI using Tesseract
     rgb = cv2.cvtColor(roi, cv2.COLOR_BGR2RGB)
@@ -64,20 +63,21 @@ def read_title(aligned, fileTag='', debug=False) -> str:
     return text
 
 
-def logo_template_match(aligned, template_img, debug=True):
+def logo_template_match(aligned, template_img, fileTag=None, debug=True):
     """
     Returns the top-left 2D coordinate of the template match.
     """
 
     # first convert to grayscale
     aligned_gray = cv2.cvtColor(aligned, cv2.COLOR_BGR2GRAY)
-    logo_template_gray = cv2.cvtColor(logo_template, cv2.COLOR_BGR2GRAY)
+    logo_template_gray = cv2.cvtColor(template_img, cv2.COLOR_BGR2GRAY)
     logo_template_h = logo_template_gray.shape[0]
     logo_template_w = logo_template_gray.shape[1]
 
     # perform Zero-normalized cross-correlation template match
     result = cv2.matchTemplate(aligned_gray, logo_template_gray, cv2.TM_CCOEFF_NORMED)
-    _, _, _, max_loc = cv2.minMaxLoc(result)  # highest value is the best match
+    _, max_val, _, max_loc = cv2.minMaxLoc(result)  # highest value is the best match
+    # print(f'max_val: {max_val}, max_loc: {max_loc}')
 
     if debug:
         # get the ROI coordinates for the match
@@ -89,33 +89,38 @@ def logo_template_match(aligned, template_img, debug=True):
         # visualize the match next to the template
         aligned_roi = aligned_gray[roi_y0:roi_y1, roi_x0:roi_x1]
         tm_stacked = np.hstack([aligned_roi, logo_template_gray])
-        cv2.imwrite(f"output/{args['tag']}_TM.jpg", tm_stacked)
+        cv2.imwrite(f"output/{fileTag}_TM.jpg", tm_stacked)
 
-    return max_loc
+    return max_val, max_loc
 
 
-def verify_card(RANSAC_inliers, title, TM_loc) -> bool:
+def verify_card(RANSAC_inliers, title, max_zncc_val, max_zncc_loc) -> bool:
     # require a minimum number of inliers during the homography estimation
     if RANSAC_inliers < 11:
-        print("failed RANSAC inlier verification!")
+        print("Failed RANSAC inlier verification!")
         return False
 
     # verify title with regex (allowing for variable amounts of whitespace)
     expectedTitleRegex = re.compile(r'(COVID\s*-\s*1\s*9\s*Vaccination\s*Record\s*Card)', re.DOTALL)
     match = expectedTitleRegex.search(title)
     if match is None:
-        print(f"failed title verification! title: {title}")
+        print('Failed title verification!',
+              '\nExpected title: COVID-19 Vaccination Record Card',
+              f'\nDetected title: {title}')
         return False
 
     # verify the CDC logo is near the top right corner
-    if TM_loc[0] < 1470 or TM_loc[1] > 10:
-        print("failed CDC logo check. should be in top right!")
+    if max_zncc_loc[0] < 1470 or max_zncc_loc[1] > 10:
+        print("Failed CDC logo check. Location should be in top right corner!")
+        return False
+    elif max_zncc_val < 0.4:
+        print("Failed CDC logo check. Similarity score too low!")
         return False
 
     return True
 
 
-def visualize_aligned(aligned, template, fileTag=''):
+def visualize_aligned(aligned, template, fileTag=None):
     # resize both the aligned and template images so we can easily
     # visualize them on our screen
     aligned = imutils.resize(aligned, width=700)
@@ -137,8 +142,8 @@ def visualize_aligned(aligned, template, fileTag=''):
     # cv2.imshow("Image Alignment Stacked", stacked)
     # cv2.imshow("Image Alignment Overlay", output)
     # cv2.waitKey(0)
-    cv2.imwrite(f"output/{args['tag']}_stacked.jpg", stacked)
-    cv2.imwrite(f"output/{args['tag']}_overlay.jpg", output)
+    cv2.imwrite(f"output/{fileTag}_stacked.jpg", stacked)
+    cv2.imwrite(f"output/{fileTag}_overlay.jpg", output)
 
 
 if __name__ == "__main__":
@@ -171,10 +176,10 @@ if __name__ == "__main__":
     title = read_title(aligned, fileTag=args["tag"], debug=True)
 
     # perform logo template match
-    max_loc = logo_template_match(aligned, logo_template, debug=True)
+    max_zncc_val, max_zncc_loc = logo_template_match(aligned, logo_template, fileTag=args["tag"], debug=True)
 
     # verify it is a valid vaccination card
-    verified = verify_card(RANSAC_inliers, title, max_loc)
+    verified = verify_card(RANSAC_inliers, title, max_zncc_val, max_zncc_loc)
     if verified:
         print("Valid vaccination card detected!")
     else:
