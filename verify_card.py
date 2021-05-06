@@ -45,7 +45,7 @@ OCR_LOCATIONS = [
 # 		print(f'{loc.id}:')
 # 		print(text)
 
-def read_title(aligned, fileTag=None, debug=False) -> str:
+def read_title(aligned, template, fileTag=None, debug=False) -> str:
     loc = OCR_LOCATIONS[0]
 
     # get title ROI
@@ -54,6 +54,12 @@ def read_title(aligned, fileTag=None, debug=False) -> str:
 
     # show ROI
     if debug:
+        thickness = 10
+        half_thickness = int(thickness / 2)
+        template_highlight_title_roi = cv2.rectangle(template.copy(), (x + half_thickness, y + half_thickness, w, h), (232, 104, 30), thickness=thickness)
+        aligned_highlight_title_roi = cv2.rectangle(aligned.copy(), (x + half_thickness, y + half_thickness, w, h), (232, 104, 30), thickness=thickness)
+        stacked = np.hstack([template_highlight_title_roi, aligned_highlight_title_roi])
+        cv2.imwrite(f"output/{fileTag}_bb_{loc.id}.jpg", stacked)
         cv2.imwrite(f"output/{fileTag}_field_{loc.id}.jpg", roi)
 
     # OCR the ROI using Tesseract
@@ -75,23 +81,23 @@ def logo_template_match(aligned, template_img, fileTag=None, debug=True):
     logo_template_w = logo_template_gray.shape[1]
 
     # perform Zero-normalized cross-correlation template match
-    result = cv2.matchTemplate(aligned_gray, logo_template_gray, cv2.TM_CCOEFF_NORMED)
-    _, max_val, _, max_loc = cv2.minMaxLoc(result)  # highest value is the best match
-    # print(f'max_val: {max_val}, max_loc: {max_loc}')
+    tm_result = cv2.matchTemplate(aligned_gray, logo_template_gray, cv2.TM_CCOEFF_NORMED)
+    _, max_zncc_val, _, max_zncc_loc = cv2.minMaxLoc(tm_result)  # highest value is the best match
+    # print(f'max_zncc_val: {max_zncc_val}, max_zncc_loc: {max_zncc_loc}')
 
     if debug:
         # get the ROI coordinates for the match
-        roi_x0 = min(aligned_gray.shape[1], max(0, max_loc[0]))
-        roi_y0 = min(aligned_gray.shape[0], max(0, max_loc[1]))
-        roi_x1 = min(aligned_gray.shape[1], max(0, max_loc[0] + logo_template_w))
-        roi_y1 = min(aligned_gray.shape[0], max(0, max_loc[1] + logo_template_h))
+        roi_x0 = min(aligned_gray.shape[1], max(0, max_zncc_loc[0]))
+        roi_y0 = min(aligned_gray.shape[0], max(0, max_zncc_loc[1]))
+        roi_x1 = min(aligned_gray.shape[1], max(0, max_zncc_loc[0] + logo_template_w))
+        roi_y1 = min(aligned_gray.shape[0], max(0, max_zncc_loc[1] + logo_template_h))
 
         # visualize the match next to the template
         aligned_roi = aligned_gray[roi_y0:roi_y1, roi_x0:roi_x1]
         tm_stacked = np.hstack([aligned_roi, logo_template_gray])
         cv2.imwrite(f"output/{fileTag}_TM.jpg", tm_stacked)
 
-    return max_val, max_loc
+    return max_zncc_val, max_zncc_loc
 
 
 def verify_card(RANSAC_inliers, title, max_zncc_val, max_zncc_loc) -> bool:
@@ -172,8 +178,7 @@ if __name__ == "__main__":
     visualize_aligned(aligned, template, fileTag=args["tag"])
 
     # perform OCR on the aligned image
-    # perform_OCR()
-    title = read_title(aligned, fileTag=args["tag"], debug=True)
+    title = read_title(aligned, template, fileTag=args["tag"], debug=True)
 
     # perform logo template match
     max_zncc_val, max_zncc_loc = logo_template_match(aligned, logo_template, fileTag=args["tag"], debug=True)

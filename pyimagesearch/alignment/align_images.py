@@ -65,10 +65,14 @@ def align_images(image, template, fileTag, maxFeatures=500, keepPercent=0.2,
 	mask_inliers = np.array(mask)
 	mask_outliers = np.logical_not(mask_inliers).astype(int)
 
-	print(f'matches: {len(matches)}, output mask: {mask.shape}, mask_inliers.count_nonzero(): {np.count_nonzero(mask_inliers)}, mask_outliers.count_nonzero(): {np.count_nonzero(mask_outliers)}')
+	# print(f'matches: {len(matches)}, output mask: {mask.shape}, mask_inliers.count_nonzero(): {np.count_nonzero(mask_inliers)}, mask_outliers.count_nonzero(): {np.count_nonzero(mask_outliers)}')
 
 	# check to see if we should visualize the matched keypoints
 	if debug:
+		# draw matches (all)
+		matchedVisAll = cv2.drawMatches(image, kpsA, template, kpsB,
+			matches, None)
+
 		# draw matches (RANSAC inliers)
 		matchedVis = cv2.drawMatches(image, kpsA, template, kpsB,
 			matches, None, matchColor=(0, 255, 0), matchesMask=mask_inliers)
@@ -81,10 +85,12 @@ def align_images(image, template, fileTag, maxFeatures=500, keepPercent=0.2,
 		# matchedVis = cv2.drawMatches(image, kpsA, template, kpsB,
 		# 	matches, matchedVis, matchColor=(0, 0, 255), matchesMask=mask_outliers, flags=cv2.DrawMatchesFlags_DRAW_OVER_OUTIMG)
 
+		matchedVisAll = imutils.resize(matchedVisAll, width=1000)
 		matchedVis = imutils.resize(matchedVis, width=1000)
 		# cv2.imshow("Matched Keypoints", matchedVis)
 		# cv2.waitKey(0)
-		cv2.imwrite(f"output/{fileTag}_matched_keypoints.jpg", matchedVis)
+		cv2.imwrite(f"output/{fileTag}_matched_keypoints.jpg", matchedVisAll)
+		cv2.imwrite(f"output/{fileTag}_matched_keypoints_inliers.jpg", matchedVis)
 
 	# use the homography matrix to align the images
 	(h, w) = template.shape[:2]
