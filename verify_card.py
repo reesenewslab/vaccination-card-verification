@@ -121,11 +121,11 @@ if __name__ == "__main__":
     # parse arguments
     ap = argparse.ArgumentParser()
     ap.add_argument("-i", "--image", required=True,
-                    help="path to input image that we'll align to template")
+                    help="path to input image")
     ap.add_argument("-t", "--template", required=True,
-                    help="path to input template image")
+                    help="path to the vaccination template image")
     ap.add_argument("--tag", required=False,
-                    help="prefix for output files")
+                    help="prefix for output visualization files")
     args = vars(ap.parse_args())
 
     # load the input image and template from disk
