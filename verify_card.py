@@ -1,9 +1,8 @@
-# USAGE
+# USAGE:
 # python verify_card.py --template templates/CDC_card_template_01.png --image scans/valid/covid_01.JPEG
 
 import argparse
 import re
-from collections import namedtuple
 
 import cv2
 import imutils
@@ -11,45 +10,13 @@ import numpy as np
 import pytesseract
 from pyimagesearch.alignment import align_images
 
-# try:
-#     from PIL import Image
-# except ImportError:
-#     import Image
-
-# create a named tuple which we can use to create locations of the
-# input document which we wish to OCR
-OCRLocation = namedtuple("OCRLocation", ["id", "bbox", "filter_keywords"])
-
-# define the locations of each area of the document we wish to OCR
-OCR_LOCATIONS = [
-    OCRLocation("title", (0, 0, 1487, 160), [""]),
-    OCRLocation("last_name", (23, 427, 905, 161), ["last", "name"]),
-    OCRLocation("first_name", (919, 387, 900, 205), ["first", "name"]),
-    OCRLocation("middle_initial", (1814, 387, 177, 189), ["MI"]),
-    OCRLocation("dob", (23, 583, 749, 113), ["date", "of", "birth"])
-]
-
-
-# def perform_OCR():
-# 	# get the regions of interest
-# 	for loc in OCR_LOCATIONS:
-# 		(x, y, w, h) = loc.bbox
-# 		roi = aligned[y:y + h, x:x + w]
-
-# 		# cv2.imwrite("output/" +  loc.id + ".jpg", roi)
-# 		cv2.imwrite(f"output/{args['tag']}_field_{loc.id}.jpg", roi)
-
-# 		# OCR the ROI using Tesseract
-# 		rgb = cv2.cvtColor(roi, cv2.COLOR_BGR2RGB)
-# 		text = pytesseract.image_to_string(rgb)
-# 		print(f'{loc.id}:')
-# 		print(text)
 
 def read_title(aligned, template, fileTag=None, debug=False) -> str:
-    loc = OCR_LOCATIONS[0]
+    # manually determine bounding box coordinate of template title
+    title_loc = (0, 0, 1487, 160)
 
     # get title ROI
-    (x, y, w, h) = loc.bbox
+    (x, y, w, h) = title_loc
     roi = aligned[y:y + h, x:x + w]
 
     # show ROI
@@ -59,8 +26,8 @@ def read_title(aligned, template, fileTag=None, debug=False) -> str:
         template_highlight_title_roi = cv2.rectangle(template.copy(), (x + half_thickness, y + half_thickness, w, h), (232, 104, 30), thickness=thickness)
         aligned_highlight_title_roi = cv2.rectangle(aligned.copy(), (x + half_thickness, y + half_thickness, w, h), (232, 104, 30), thickness=thickness)
         stacked = np.hstack([template_highlight_title_roi, aligned_highlight_title_roi])
-        cv2.imwrite(f"output/{fileTag}_bb_{loc.id}.jpg", stacked)
-        cv2.imwrite(f"output/{fileTag}_field_{loc.id}.jpg", roi)
+        cv2.imwrite(f"output/{fileTag}_bb_title.jpg", stacked)
+        cv2.imwrite(f"output/{fileTag}_field_title.jpg", roi)
 
     # OCR the ROI using Tesseract
     rgb = cv2.cvtColor(roi, cv2.COLOR_BGR2RGB)
@@ -145,9 +112,6 @@ def visualize_aligned(aligned, template, fileTag=None):
     cv2.addWeighted(overlay, 0.5, output, 0.5, 0, output)
 
     # show the two output image alignment visualizations
-    # cv2.imshow("Image Alignment Stacked", stacked)
-    # cv2.imshow("Image Alignment Overlay", output)
-    # cv2.waitKey(0)
     cv2.imwrite(f"output/{fileTag}_stacked.jpg", stacked)
     cv2.imwrite(f"output/{fileTag}_overlay.jpg", output)
 
