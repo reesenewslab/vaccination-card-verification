@@ -31,6 +31,7 @@ optional arguments:
     python -m venv .venv
     source .venv/bin/activate
     ```
+3. Install tesseract using [the official docs](https://tesseract-ocr.github.io/tessdoc/Installation.html).
 3. Install pip dependencies
     ```bash
     pip install -r requirements.txt
