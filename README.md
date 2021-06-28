@@ -4,6 +4,7 @@
   - [Tutorial](#tutorial) 
   - [Usage](#usage)
   - [Installation & Setup](#installation--setup)
+  - [Citations](#citations)
 
 ![terminal example](./assets/terminal_ex_duo_bigtext.png)
 
@@ -44,4 +45,6 @@ optional arguments:
         ```bash
         pip install -r requirements-dev.txt
         ```
-
+## Citations
+- Adrian Rosebrock, Image alignment and registration with OpenCV, PyImageSearch, https://www.pyimagesearch.com/2020/08/31/image-alignment-and-registration-with-opencv/, accessed on 6 May 2021
+- Adrian Rosebrock, OCR a document, form, or invoice with Tesseract, OpenCV, and Python, PyImageSearch, https://www.pyimagesearch.com/2020/09/07/ocr-a-document-form-or-invoice-with-tesseract-opencv-and-python/, accessed on 6 May 2021
