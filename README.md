@@ -1,10 +1,15 @@
 # Automated COVID Vaccination Card Verification
 
 - [Automated COVID Vaccination Card Verification](#automated-covid-vaccination-card-verification)
+  - [Tutorial](#tutorial) 
   - [Usage](#usage)
   - [Installation & Setup](#installation--setup)
 
 ![terminal example](./assets/terminal_ex_duo_bigtext.png)
+
+## Tutorial
+- Part 1: [Automated COVID Vaccination Card Verification — Image Alignment](https://medium.com/reese-innovate/automated-covid-vaccination-card-verification-b27e289cf8b2)
+- Part 2: [Automated COVID Vaccination Card Verification — Verification Checks](https://medium.com/reese-innovate/automated-covid-vaccination-card-verification-verification-checks-81ef451f59ef)
 
 ## Usage
 
