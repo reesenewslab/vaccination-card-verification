@@ -1,13 +1,24 @@
-From python:3
+FROM ubuntu:18.04
 
-ENV PYTHONBUFFERED 1
+RUN apt-get update \    
+    && apt-get install tesseract-ocr -y \
+    python3 \    
+    python3-pip \    
+    && apt-get clean \
+    && apt-get autoremove
 
-WORKDIR /app
+RUN apt-get install ffmpeg libsm6 libxext6  -y
 
-ADD . /app
+ADD . /home/App
+WORKDIR /home/App
+COPY requirements.txt ./
+COPY . .
 
-COPY requirements.txt /app/requirements.txt
+RUN pip3 install --upgrade pip 
+RUN pip3 install -r requirements.txt
 
-RUN pip install -r requirements.txt
-
-COPY . /app
+# VOLUME ["/data"]
+# EXPOSE 5000 5000
+# CMD ["python3","OCRRun.py"]
+# python verify_card.py --template templates/CDC_card_template_01.png --image input.jpg
+# CMD ["python3","verify_card.py","--template","templates/CDC_card_template_01.png","--image","input.jpg"]
