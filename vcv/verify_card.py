@@ -1,14 +1,14 @@
 # USAGE:
 # python verify_card.py --template templates/CDC_card_template_01.png --image scans/valid/covid_01.JPEG
 
-import argparse
+import os
 import re
 
 import cv2
 import imutils
 import numpy as np
 import pytesseract
-from pyimagesearch.alignment import align_images
+from .pyimagesearch.alignment import align_images
 
 
 def read_title(aligned, template, fileTag=None, debug=False) -> str:
@@ -67,7 +67,7 @@ def logo_template_match(aligned, template_img, fileTag=None, debug=True):
     return max_zncc_val, max_zncc_loc
 
 
-def verify_card(RANSAC_inliers, title, max_zncc_val, max_zncc_loc) -> bool:
+def perform_verification_checks(RANSAC_inliers, title, max_zncc_val, max_zncc_loc) -> bool:
     # require a minimum number of inliers during the homography estimation
     if RANSAC_inliers < 11:
         print("Failed RANSAC inlier verification!")
@@ -112,44 +112,37 @@ def visualize_aligned(aligned, template, fileTag=None):
     cv2.addWeighted(overlay, 0.5, output, 0.5, 0, output)
 
     # show the two output image alignment visualizations
+    output_dir = './output'
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
+
     cv2.imwrite(f"output/{fileTag}_stacked.jpg", stacked)
     cv2.imwrite(f"output/{fileTag}_overlay.jpg", output)
 
 
-if __name__ == "__main__":
-
-    # parse arguments
-    ap = argparse.ArgumentParser()
-    ap.add_argument("-i", "--image", required=True,
-                    help="path to input image")
-    ap.add_argument("-t", "--template", required=True,
-                    help="path to the vaccination template image")
-    ap.add_argument("--tag", required=False,
-                    help="prefix for output visualization files")
-    args = vars(ap.parse_args())
-
+def verify_card(image_path, template_path, fileTag='') -> bool:
     # load the input image and template from disk
     print("[INFO] loading images...")
-    image = cv2.imread(args["image"])
-    template = cv2.imread(args["template"])
+    image = cv2.imread(image_path)
+    template = cv2.imread(template_path)
     logo_template = cv2.imread('templates/cdc_logo_template.png')
 
     # align the images
     print("[INFO] aligning images...")
-    aligned, RANSAC_inliers = align_images(image, template, args["tag"], debug=True)
+    aligned, RANSAC_inliers = align_images(image, template, fileTag, debug=True)
 
     # visualize aligned images
-    visualize_aligned(aligned, template, fileTag=args["tag"])
+    visualize_aligned(aligned, template, fileTag=fileTag)
 
     # perform OCR on the aligned image
-    title = read_title(aligned, template, fileTag=args["tag"], debug=True)
+    title = read_title(aligned, template, fileTag=fileTag, debug=True)
 
     # perform logo template match
-    max_zncc_val, max_zncc_loc = logo_template_match(aligned, logo_template, fileTag=args["tag"], debug=True)
+    max_zncc_val, max_zncc_loc = logo_template_match(aligned, logo_template, fileTag=fileTag, debug=True)
 
     # verify it is a valid vaccination card
-    verified = verify_card(RANSAC_inliers, title, max_zncc_val, max_zncc_loc)
-    if verified:
-        print("Valid vaccination card detected!")
-    else:
-        print("Invalid vaccination card detected!")
+    verified = perform_verification_checks(RANSAC_inliers, title, max_zncc_val, max_zncc_loc)
+    
+    return verified
+
+
