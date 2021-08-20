@@ -1,4 +1,9 @@
-.venv/
+.venv*
 *.pyc
 output/
 scans/
+pip-wheel-metadata/
+dist/
+*.egg-info
+backup/
+*.DS_Store
