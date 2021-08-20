@@ -30,11 +30,11 @@ optional arguments:
 
 
 ## Installation & Setup
-1. Clone repository
-2. Install tesseract using [the official docs](https://tesseract-ocr.github.io/tessdoc/Installation.html).
+1. Install tesseract using [the official docs](https://tesseract-ocr.github.io/tessdoc/Installation.html).
     ```bash
     apt-get install tesseract-ocr
     ```
+2. Clone and cd into this repo.
 3. Install the package
     ```bash
     pip install .
