@@ -159,6 +159,11 @@ def verify_card(image_path: str, template_path: str, show: bool=False, output_di
             3: failed CDC logo check -- location not in top right corner
             4: failed CDC logo check -- similarity score too low
     '''
+    # check the input paths exist
+    if not os.path.exists(image_path):
+        raise FileNotFoundError(f"Input image can not be found. image_path='{image_path}'")
+    if not os.path.exists(template_path):
+        raise FileNotFoundError(f"Template image can not be found. template_path='{template_path}'")
 
     # load the input image and template from disk
     if verbose:
