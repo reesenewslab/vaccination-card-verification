@@ -3,6 +3,8 @@
 
 import os
 import re
+from pathlib import Path
+from typing import Tuple
 
 import cv2
 import imutils
@@ -11,7 +13,7 @@ import pytesseract
 from .pyimagesearch.alignment import align_images
 
 
-def read_title(aligned, template, fileTag=None, debug=False) -> str:
+def read_title(aligned, template, debug=False, output_dir='') -> str:
     # manually determine bounding box coordinate of template title
     title_loc = (0, 0, 1487, 160)
 
@@ -26,8 +28,8 @@ def read_title(aligned, template, fileTag=None, debug=False) -> str:
         template_highlight_title_roi = cv2.rectangle(template.copy(), (x + half_thickness, y + half_thickness, w, h), (232, 104, 30), thickness=thickness)
         aligned_highlight_title_roi = cv2.rectangle(aligned.copy(), (x + half_thickness, y + half_thickness, w, h), (232, 104, 30), thickness=thickness)
         stacked = np.hstack([template_highlight_title_roi, aligned_highlight_title_roi])
-        cv2.imwrite(f"output/{fileTag}_bb_title.jpg", stacked)
-        cv2.imwrite(f"output/{fileTag}_field_title.jpg", roi)
+        cv2.imwrite(os.path.join(output_dir, 'bb_title.jpg'), stacked)
+        cv2.imwrite(os.path.join(output_dir, 'field_title.jpg'), roi)
 
     # OCR the ROI using Tesseract
     rgb = cv2.cvtColor(roi, cv2.COLOR_BGR2RGB)
@@ -36,7 +38,7 @@ def read_title(aligned, template, fileTag=None, debug=False) -> str:
     return text
 
 
-def logo_template_match(aligned, template_img, fileTag=None, debug=True):
+def logo_template_match(aligned, template_img, debug=True, output_dir=''):
     """
     Returns the top-left 2D coordinate of the template match.
     """
@@ -62,38 +64,60 @@ def logo_template_match(aligned, template_img, fileTag=None, debug=True):
         # visualize the match next to the template
         aligned_roi = aligned_gray[roi_y0:roi_y1, roi_x0:roi_x1]
         tm_stacked = np.hstack([aligned_roi, logo_template_gray])
-        cv2.imwrite(f"output/{fileTag}_TM.jpg", tm_stacked)
+        cv2.imwrite(os.path.join(output_dir, 'template_match.jpg'), tm_stacked)
 
     return max_zncc_val, max_zncc_loc
 
 
-def perform_verification_checks(RANSAC_inliers, title, max_zncc_val, max_zncc_loc) -> bool:
+def perform_verification_checks(RANSAC_inliers, title, max_zncc_val, max_zncc_loc, verbose) -> Tuple[bool, int]:
+    '''
+    Perform 3 verification checks (ransac inlier, title verificaiton, and logo template match)
+
+    Input:
+        RANSAC_inliers
+        title
+        max_zncc_val
+        max_zncc_loc
+
+    Output: (bool, int)
+        [bool] True if all checks passed. False otherwise.
+        [int] failure code
+            0: all checks passed
+            1: failed RANSAC inlier verificaiton
+            2: failed title verification
+            3: failed CDC logo check -- location not in top right corner
+            4: failed CDC logo check -- similarity score too low
+    '''
     # require a minimum number of inliers during the homography estimation
     if RANSAC_inliers < 11:
-        print("Failed RANSAC inlier verification!")
-        return False
+        if verbose:
+            print("Failed RANSAC inlier verification!")
+        return (False, 1)
 
     # verify title with regex (allowing for variable amounts of whitespace)
     expectedTitleRegex = re.compile(r'(COVID\s*-\s*1\s*9\s*Vaccination\s*Record\s*Card)', re.DOTALL)
     match = expectedTitleRegex.search(title)
     if match is None:
-        print('Failed title verification!',
-              '\nExpected title: COVID-19 Vaccination Record Card',
-              f'\nDetected title: {title}')
-        return False
+        if verbose:
+            print('Failed title verification!',
+                '\nExpected title: COVID-19 Vaccination Record Card',
+                f'\nDetected title: {title}')
+        return (False, 2)
 
     # verify the CDC logo is near the top right corner
     if max_zncc_loc[0] < 1470 or max_zncc_loc[1] > 10:
-        print("Failed CDC logo check. Location should be in top right corner!")
-        return False
+        if verbose:
+            print("Failed CDC logo check. Location should be in top right corner!")
+        return (False, 3)
     elif max_zncc_val < 0.4:
-        print("Failed CDC logo check. Similarity score too low!")
-        return False
+        if verbose:
+            print("Failed CDC logo check. Similarity score too low!")
+        return (False, 4)
 
-    return True
+    return (True, 0)
 
 
-def visualize_aligned(aligned, template, fileTag=None):
+def visualize_aligned(aligned, template, output_dir=''):
     # resize both the aligned and template images so we can easily
     # visualize them on our screen
     aligned = imutils.resize(aligned, width=700)
@@ -111,38 +135,62 @@ def visualize_aligned(aligned, template, fileTag=None):
     output = aligned.copy()
     cv2.addWeighted(overlay, 0.5, output, 0.5, 0, output)
 
-    # show the two output image alignment visualizations
-    output_dir = './output'
-    if not os.path.exists(output_dir):
-        os.mkdir(output_dir)
-
-    cv2.imwrite(f"output/{fileTag}_stacked.jpg", stacked)
-    cv2.imwrite(f"output/{fileTag}_overlay.jpg", output)
+    cv2.imwrite(os.path.join(output_dir, 'stacked.jpg'), stacked)
+    cv2.imwrite(os.path.join(output_dir, 'overlay.jpg'), output)
 
 
-def verify_card(image_path, template_path, fileTag='') -> bool:
+def verify_card(image_path: str, template_path: str, show: bool=False, output_dir: str='./output', verbose: bool=False) -> Tuple[bool, int]:
+    '''
+    Verifys a given vaccination card matches a template.
+
+    Input:
+        image_path: A string specifying the path to the input image.
+        tempalte_path: A string specifying the path to the template image.
+        [Optional] show: Writes intermediate images if True.
+        [Optional] output_dir: A string specifying a directory where output images should be written. Only relevant if `show` is True.
+        [Optional] verbose: Verbosity mode. Prints failure reason to stdout.
+
+    Output: (bool, int)
+        [bool] True if all checks passed. False otherwise. 
+        [int] failure code.
+            0: all checks passed
+            1: failed RANSAC inlier verificaiton
+            2: failed title verification
+            3: failed CDC logo check -- location not in top right corner
+            4: failed CDC logo check -- similarity score too low
+    '''
+
     # load the input image and template from disk
-    print("[INFO] loading images...")
+    if verbose:
+        print("[INFO] loading images...")
     image = cv2.imread(image_path)
     template = cv2.imread(template_path)
     logo_template = cv2.imread('templates/cdc_logo_template.png')
 
+    # create the output directory
+    if show:
+        output_dir = os.path.join(output_dir, Path(image_path).stem)
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+
     # align the images
-    print("[INFO] aligning images...")
-    aligned, RANSAC_inliers = align_images(image, template, fileTag, debug=True)
+    if verbose:
+        print("[INFO] aligning images...")
+    aligned, RANSAC_inliers = align_images(image, template, debug=show, output_dir=output_dir)
 
     # visualize aligned images
-    visualize_aligned(aligned, template, fileTag=fileTag)
+    if show:
+        visualize_aligned(aligned, template, output_dir=output_dir)
 
     # perform OCR on the aligned image
-    title = read_title(aligned, template, fileTag=fileTag, debug=True)
+    title = read_title(aligned, template, debug=show, output_dir=output_dir)
 
     # perform logo template match
-    max_zncc_val, max_zncc_loc = logo_template_match(aligned, logo_template, fileTag=fileTag, debug=True)
+    max_zncc_val, max_zncc_loc = logo_template_match(aligned, logo_template, debug=show, output_dir=output_dir)
 
     # verify it is a valid vaccination card
-    verified = perform_verification_checks(RANSAC_inliers, title, max_zncc_val, max_zncc_loc)
+    verified, failure_code = perform_verification_checks(RANSAC_inliers, title, max_zncc_val, max_zncc_loc, verbose)
     
-    return verified
+    return (verified, failure_code)
 
 

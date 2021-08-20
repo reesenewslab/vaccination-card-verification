@@ -1,11 +1,13 @@
 # import the necessary packages
+import os
+
 import cv2
 import imutils
 import numpy as np
 
 
-def align_images(image, template, fileTag, maxFeatures=500, keepPercent=0.2,
-                 debug=False):
+def align_images(image, template, maxFeatures=500, keepPercent=0.2,
+                 debug=False, output_dir=''):
     '''
     Aligns image to template via the steps:
         1. ORB keypoint detection
@@ -15,7 +17,6 @@ def align_images(image, template, fileTag, maxFeatures=500, keepPercent=0.2,
     Input:
         image - the image to be aligned
         template - the template the image should be aligned to
-        fileTag - a prefix to be used on the debug output files
         [Optional] maxFeatures - the maximum number of keypoints to detect
         [Optional] keepPercent - the percentage of keypoint matches to actually use during the homography estimation
 
@@ -83,8 +84,8 @@ def align_images(image, template, fileTag, maxFeatures=500, keepPercent=0.2,
 
         matchedVisAll = imutils.resize(matchedVisAll, width=1000)
         matchedVis = imutils.resize(matchedVis, width=1000)
-        cv2.imwrite(f"output/{fileTag}_matched_keypoints.jpg", matchedVisAll)
-        cv2.imwrite(f"output/{fileTag}_matched_keypoints_inliers.jpg", matchedVis)
+        cv2.imwrite(os.path.join(output_dir, 'matched_keypoints.jpg'), matchedVisAll)
+        cv2.imwrite(os.path.join(output_dir, 'matched_keypoints_inliers.jpg'), matchedVis)
 
     # use the homography matrix to align the images
     (h, w) = template.shape[:2]
