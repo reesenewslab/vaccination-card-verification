@@ -2,6 +2,7 @@
 
 - [Automated COVID Vaccination Card Verification](#automated-covid-vaccination-card-verification)
   - [Tutorial](#tutorial)
+  - [Requirements](#requirements)
   - [Installation & Setup](#installation--setup)
   - [Citations](#citations)
 
@@ -28,6 +29,8 @@ optional arguments:
 - Terminal usage: `python verify_card.py --template templates/CDC_card_template_01.png --image <path-to-input>`
 - We found there were slight variations (different aspect ratio, spacing between lines) in the CDC vaccination cards that were issued, so you can specify a specific template to verify against. We provide two templates (`./templates/CDC_card_template_01.png` and `./templates/CDC_card_template_02.png`). -->
 
+## Requirements
+- Python >= 3.7
 
 ## Installation & Setup
 1. Install tesseract using [the official docs](https://tesseract-ocr.github.io/tessdoc/Installation.html).
