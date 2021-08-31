@@ -159,6 +159,7 @@ def verify_card(image_path: str, template_path: str=None, show: bool=False, outp
             2: failed title verification
             3: failed CDC logo check -- location not in top right corner
             4: failed CDC logo check -- similarity score too low
+            5: image align failed
     '''
     # set default resource paths if not specified
     if template_path is None:
@@ -195,7 +196,10 @@ def verify_card(image_path: str, template_path: str=None, show: bool=False, outp
     # align the images
     if verbose:
         print("[INFO] aligning images...")
-    aligned, RANSAC_inliers = align_images(image, template, debug=show, output_dir=output_dir)
+    try:
+        aligned, RANSAC_inliers = align_images(image, template, debug=show, output_dir=output_dir)
+    except cv2.error as e:  # if image align fails, return INVALID
+        return (False, 5)
 
     # visualize aligned images
     if show:
