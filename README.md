@@ -59,7 +59,7 @@ optional arguments:
 
     ...
 
-    isValid, failure_code = verify_card(img_path, template_path)
+    isValid, failure_code = verify_card(img_path)
     ```
 
 ## Citations
