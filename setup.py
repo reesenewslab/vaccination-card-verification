@@ -1,2 +1,6 @@
 import setuptools
-setuptools.setup()
+setuptools.setup(
+    package_data={
+        "vcv": ["templates/*"],
+    }
+)
