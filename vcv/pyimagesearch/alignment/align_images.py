@@ -62,7 +62,10 @@ def align_images(image, template, maxFeatures=500, keepPercent=0.2,
         ptsB[i] = kpsB[m.trainIdx].pt
 
     # compute the homography matrix between the two sets of matched points
-    (H, mask) = cv2.findHomography(ptsA, ptsB, method=cv2.RANSAC, ransacReprojThreshold=5)
+    try:
+        (H, mask) = cv2.findHomography(ptsA, ptsB, method=cv2.RANSAC, ransacReprojThreshold=5)
+    except cv2.error as e:  # raise error if homography cannot be computed (occurs if < 4 keypoint matches)
+        raise e
     mask_inliers = np.array(mask)
     mask_outliers = np.logical_not(mask_inliers).astype(int)
 
