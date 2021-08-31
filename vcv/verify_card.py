@@ -180,6 +180,12 @@ def verify_card(image_path: str, template_path: str=None, show: bool=False, outp
     template = cv2.imread(template_path)
     logo_template = cv2.imread(logo_file_path)
 
+    # check if images loaded correctly
+    if image is None:
+        raise ValueError("Input image is empty, or unable to load.")
+    if template is None:
+        raise ValueError("Input template is empty, or unable to load.")
+
     # create the output directory
     if show:
         output_dir = os.path.join(output_dir, Path(image_path).stem)
