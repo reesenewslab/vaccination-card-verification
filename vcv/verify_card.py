@@ -3,6 +3,7 @@
 
 import os
 import re
+import pkg_resources
 from pathlib import Path
 from typing import Tuple
 
@@ -139,13 +140,13 @@ def visualize_aligned(aligned, template, output_dir=''):
     cv2.imwrite(os.path.join(output_dir, 'overlay.jpg'), output)
 
 
-def verify_card(image_path: str, template_path: str, show: bool=False, output_dir: str='./output', verbose: bool=False) -> Tuple[bool, int]:
+def verify_card(image_path: str, template_path: str=None, show: bool=False, output_dir: str='./output', verbose: bool=False) -> Tuple[bool, int]:
     '''
     Verifys a given vaccination card matches a template.
 
     Input:
         image_path: A string specifying the path to the input image.
-        tempalte_path: A string specifying the path to the template image.
+        [Optional] template_path: Specify your own vaccination card template. Defaults to template included in the package.
         [Optional] show: Writes intermediate images if True.
         [Optional] output_dir: A string specifying a directory where output images should be written. Only relevant if `show` is True.
         [Optional] verbose: Verbosity mode. Prints failure reason to stdout.
@@ -159,18 +160,25 @@ def verify_card(image_path: str, template_path: str, show: bool=False, output_di
             3: failed CDC logo check -- location not in top right corner
             4: failed CDC logo check -- similarity score too low
     '''
+    # set default resource paths if not specified
+    if template_path is None:
+        template_path = pkg_resources.resource_filename(__name__, "templates/CDC_card_template_01.png")
+    logo_file_path = pkg_resources.resource_filename(__name__, "templates/cdc_logo_template.png")
+
     # check the input paths exist
     if not os.path.exists(image_path):
-        raise FileNotFoundError(f"Input image can not be found. image_path='{image_path}'")
+        raise FileNotFoundError(f"Input image can not be found. (image_path='{image_path}')")
     if not os.path.exists(template_path):
-        raise FileNotFoundError(f"Template image can not be found. template_path='{template_path}'")
+        raise FileNotFoundError(f"Template image can not be found. (template_path='{template_path}')")
+    if not os.path.exists(logo_file_path):
+        raise FileNotFoundError(f"Logo template image can not be found. (logo_file_path='{logo_file_path}')")
 
-    # load the input image and template from disk
+    # load the input image and templates from disk
     if verbose:
         print("[INFO] loading images...")
     image = cv2.imread(image_path)
     template = cv2.imread(template_path)
-    logo_template = cv2.imread('templates/cdc_logo_template.png')
+    logo_template = cv2.imread(logo_file_path)
 
     # create the output directory
     if show:
