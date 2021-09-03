@@ -140,7 +140,7 @@ def visualize_aligned(aligned, template, output_dir=''):
     cv2.imwrite(os.path.join(output_dir, 'overlay.jpg'), output)
 
 
-def verify_card(image_path: str, template_path: str=None, show: bool=False, output_dir: str='./output', verbose: bool=False) -> Tuple[bool, int]:
+def verify_card(image_path: str, template_path: str=None, show: bool=False, output_dir: str='./output', verbose: bool=False) -> Tuple[bool, int, dict]:
     '''
     Verifys a given vaccination card matches a template.
 
@@ -151,15 +151,22 @@ def verify_card(image_path: str, template_path: str=None, show: bool=False, outp
         [Optional] output_dir: A string specifying a directory where output images should be written. Only relevant if `show` is True.
         [Optional] verbose: Verbosity mode. Prints failure reason to stdout.
 
-    Output: (bool, int)
+    Output: (bool, int, dict)
         [bool] True if all checks passed. False otherwise. 
-        [int] failure code.
+        [int] Failure code
             0: all checks passed
             1: failed RANSAC inlier verificaiton
             2: failed title verification
             3: failed CDC logo check -- location not in top right corner
             4: failed CDC logo check -- similarity score too low
             5: image align failed
+        [dict] Verification parameters - Contains values of the variables which are used to determine card validity.
+            {
+                'RANSAC_inliers': int,              Used during the alignment process, this is the number of keypoint matches used in the homography estimation.
+                'title': str                        The OCR-detected title.
+                'max_zncc_val': float               The similarity score from the logo template match.
+                'max_zncc_loc': Tuple[int, int]     The 2D coordinate with the highest similarity score during the logo template matching process.
+            }
     '''
     # set default resource paths if not specified
     if template_path is None:
@@ -212,8 +219,12 @@ def verify_card(image_path: str, template_path: str=None, show: bool=False, outp
     max_zncc_val, max_zncc_loc = logo_template_match(aligned, logo_template, debug=show, output_dir=output_dir)
 
     # verify it is a valid vaccination card
+    verification_params = {
+        'RANSAC_inliers': RANSAC_inliers,
+        'title': title,
+        'max_zncc_val': max_zncc_val,
+        'max_zncc_loc': max_zncc_loc
+    }
     verified, failure_code = perform_verification_checks(RANSAC_inliers, title, max_zncc_val, max_zncc_loc, verbose)
     
-    return (verified, failure_code)
-
-
+    return (verified, failure_code, verification_params)
