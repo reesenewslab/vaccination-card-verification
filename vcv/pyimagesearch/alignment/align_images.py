@@ -6,7 +6,7 @@ import imutils
 import numpy as np
 
 
-def align_images(image, template, maxFeatures=500, keepPercent=0.2,
+def align_images(image, template, maxFeatures=700, keepPercent=0.2,
                  debug=False, output_dir=''):
     '''
     Aligns image to template via the steps:
@@ -63,7 +63,7 @@ def align_images(image, template, maxFeatures=500, keepPercent=0.2,
 
     # compute the homography matrix between the two sets of matched points
     try:
-        (H, mask) = cv2.findHomography(ptsA, ptsB, method=cv2.RANSAC, ransacReprojThreshold=5)
+        (H, mask) = cv2.findHomography(ptsA, ptsB, method=cv2.RANSAC, maxIters=4000, ransacReprojThreshold=15)
     except cv2.error as e:  # raise error if homography cannot be computed (occurs if < 4 keypoint matches)
         raise e
     mask_inliers = np.array(mask)
